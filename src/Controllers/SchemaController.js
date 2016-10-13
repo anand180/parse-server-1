@@ -169,7 +169,7 @@ function validateCLP(perms, fields) {
   });
 }
 const joinClassRegex = /^_Join:[A-Za-z0-9_]+:[A-Za-z0-9_]+/;
-const classAndFieldRegex = /^[A-Za-z][A-Za-z0-9_]*$/;
+const classAndFieldRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
 function classNameIsValid(className) {
   // Valid classes must:
   return (
