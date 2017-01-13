@@ -1,4 +1,4 @@
-import path from 'path';
+/* eslint-disable no-console */
 import express from 'express';
 import { ParseServer } from '../index';
 import definitions from './definitions/parse-server';
@@ -9,7 +9,7 @@ import runner from './utils/runner';
 const help = function(){
   console.log('  Get Started guide:');
   console.log('');
-  console.log('    Please have a look at the get started guide!')
+  console.log('    Please have a look at the get started guide!');
   console.log('    https://github.com/ParsePlatform/parse-server/wiki/Parse-Server-Guide');
   console.log('');
   console.log('');
@@ -31,14 +31,47 @@ const help = function(){
 function startServer(options, callback) {
   const app = express();
   const api = new ParseServer(options);
+  const sockets = {};
+
   app.use(options.mountPath, api);
 
-  var server = app.listen(options.port, callback);
+  const server = app.listen(options.port, options.host, callback);
+  server.on('connection', initializeConnections);
+
   if (options.startLiveQueryServer || options.liveQueryServerOptions) {
-    ParseServer.createLiveQueryServer(server, options.liveQueryServerOptions);
+    let liveQueryServer = server;
+    if (options.liveQueryPort) {
+      liveQueryServer = express().listen(options.liveQueryPort, () => {
+        console.log('ParseLiveQuery listening on ' + options.liveQueryPort);
+      });
+    }
+    ParseServer.createLiveQueryServer(liveQueryServer, options.liveQueryServerOptions);
   }
-  var handleShutdown = function() {
+
+  function initializeConnections(socket) {
+    /* Currently, express doesn't shut down immediately after receiving SIGINT/SIGTERM if it has client connections that haven't timed out. (This is a known issue with node - https://github.com/nodejs/node/issues/2642)
+
+      This function, along with `destroyAliveConnections()`, intend to fix this behavior such that parse server will close all open connections and initiate the shutdown process as soon as it receives a SIGINT/SIGTERM signal. */
+
+    const socketId = socket.remoteAddress + ':' + socket.remotePort;
+    sockets[socketId] = socket;
+
+    socket.on('close', () => {
+      delete sockets[socketId];
+    });
+  }
+
+  function destroyAliveConnections() {
+    for (const socketId in sockets) {
+      try {
+        sockets[socketId].destroy();
+      } catch (e) { /* */ }
+    }
+  }
+
+  const handleShutdown = function() {
     console.log('Termination signal received. Shutting down.');
+    destroyAliveConnections();
     server.close(function () {
       process.exit(0);
     });
@@ -79,27 +112,27 @@ runner({
     if (options.cluster) {
       const numCPUs = typeof options.cluster === 'number' ? options.cluster : os.cpus().length;
       if (cluster.isMaster) {
-        for(var i = 0; i < numCPUs; i++) {
+        logOptions();
+        for(let i = 0; i < numCPUs; i++) {
           cluster.fork();
         }
-        cluster.on('exit', (worker, code, signal) => {
-          console.log(`worker ${worker.process.pid} died... Restarting`);
+        cluster.on('exit', (worker, code) => {
+          console.log(`worker ${worker.process.pid} died (${code})... Restarting`);
           cluster.fork();
         });
       } else {
-        startServer(options, () => {
-          console.log('['+process.pid+'] parse-server running on '+options.serverURL);
+        startServer(options, () => {
+          console.log('[' + process.pid + '] parse-server running on ' + options.serverURL);
         });
       }
     } else {
       startServer(options, () => {
         logOptions();
         console.log('');
-        console.log('['+process.pid+'] parse-server running on '+options.serverURL);
+        console.log('[' + process.pid + '] parse-server running on ' + options.serverURL);
       });
     }
   }
-})
+});
 
-
-
+/* eslint-enable no-console */

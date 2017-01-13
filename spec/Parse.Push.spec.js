@@ -1,16 +1,16 @@
 'use strict';
 
-let request = require('request');
+const request = require('request');
 
 describe('Parse.Push', () => {
   var setup = function() {
     var pushAdapter = {
       send: function(body, installations) {
         var badge = body.data.badge;
-        let promises = installations.map((installation) => {
+        const promises = installations.map((installation) => {
           if (installation.deviceType == "ios") {
             expect(installation.badge).toEqual(badge);
-            expect(installation.originalBadge+1).toEqual(installation.badge);
+            expect(installation.originalBadge + 1).toEqual(installation.badge);
           } else {
             expect(installation.badge).toBeUndefined();
           }
@@ -39,53 +39,53 @@ describe('Parse.Push', () => {
       var installations = [];
       while(installations.length != 10) {
         var installation = new Parse.Object("_Installation");
-        installation.set("installationId", "installation_"+installations.length);
-        installation.set("deviceToken","device_token_"+installations.length)
+        installation.set("installationId", "installation_" + installations.length);
+        installation.set("deviceToken","device_token_" + installations.length)
         installation.set("badge", installations.length);
         installation.set("originalBadge", installations.length);
         installation.set("deviceType", "ios");
         installations.push(installation);
       }
       return Parse.Object.saveAll(installations);
-    }).catch((err) => {
+    }).catch((err) => {
       console.error(err);
     })
   }
 
   it('should properly send push', (done) => {
-    return setup().then(() => {
+    return setup().then(() => {
       return Parse.Push.send({
-       where: {
-         deviceType: 'ios'
-       },
-       data: {
-         badge: 'Increment',
-         alert: 'Hello world!'
-       }
-     }, {useMasterKey: true})
+        where: {
+          deviceType: 'ios'
+        },
+        data: {
+          badge: 'Increment',
+          alert: 'Hello world!'
+        }
+      }, {useMasterKey: true})
     })
-    .then(() => {
+    .then(() => {
       done();
-    }).catch((err) => {
+    }).catch((err) => {
       jfail(err);
       done();
     });
   });
 
   it('should properly send push with lowercaseIncrement', (done) => {
-    return setup().then(() => {
+    return setup().then(() => {
       return Parse.Push.send({
-       where: {
-         deviceType: 'ios'
-       },
-       data: {
-         badge: 'increment',
-         alert: 'Hello world!'
-       }
-     }, {useMasterKey: true})
-    }).then(() => {
+        where: {
+          deviceType: 'ios'
+        },
+        data: {
+          badge: 'increment',
+          alert: 'Hello world!'
+        }
+      }, {useMasterKey: true})
+    }).then(() => {
       done();
-    }).catch((err) => {
+    }).catch((err) => {
       jfail(err);
       done();
     });
@@ -113,7 +113,7 @@ describe('Parse.Push', () => {
         expect(body.error).toEqual('unauthorized');
         done();
       });
-    }).catch((err) => {
+    }).catch((err) => {
       jfail(err);
       done();
     });
@@ -148,7 +148,7 @@ describe('Parse.Push', () => {
         }
         done();
       });
-    }).catch((err) => {
+    }).catch((err) => {
       jfail(err);
       done();
     });
@@ -166,12 +166,12 @@ describe('Parse.Push', () => {
           alert: 'Hello world!'
         }
       }, {useMasterKey: true})
-    }).then((response) => {
+    }).then(() => {
       fail('should not succeed');
     }, (err) => {
       expect(err.code).toEqual(Parse.Error.PUSH_MISCONFIGURED);
       done();
-    }).catch((err) => {
+    }).catch((err) => {
       jfail(err);
       done();
     });
